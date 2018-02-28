@@ -123,8 +123,8 @@ class Line(object):
         raise Exception(Line.NO_NONZERO_ELTS_FOUND_MSG)
 
     # 检测是否为0
-    def is_zero(self, value, eps=1e-10):
-        return abs(value) < eps
+    def is_zero(self, value, eps = 1e-10):
+        return(abs(value) < eps)
 
     # 计算指定x值的y值
     def get_y(self, x):
@@ -166,23 +166,26 @@ class Line(object):
 
     # 检查是否相等
     def __eq__(self, line):
-        # Get Vector v from line.basepoint - self.basepoint
-        if self.normal_vector.is_zero() and line.normal_vector.is_zero():
-            return(True)
+        # Check zero vector
+        if self.normal_vector.is_zero():
+            if line.normal_vector.is_zero():
+                return(True)
+
+            else:
+                return(False)
 
         elif self.is_zero(line.constant_term - self.constant_term):
             return(True)
 
-        else:
-            return(False)
-
+        # Get Vector v from line.basepoint - self.basepoint
         v = line.basepoint - self.basepoint
-        if (v.coordinates[0] == 0) and (v.coordinates[1] == 0):
-            x = line.basepoint.coordinates[0] + Decimal('0')
-            y = line.get_y(x)
-            v = Vector([x, y])
-            v = v - self.basepoint
+        #if (v.coordinates[0] == 0) and (v.coordinates[1] == 0):
+            #x = line.basepoint.coordinates[0] + Decimal('0')
+            #y = line.get_y(x)
+            #v = Vector([x, y])
+            #v = v - self.basepoint
 
+        # v同时与两直线法线正交时相等
         if v.is_orthogonal(self.normal_vector) and v.is_orthogonal(line.normal_vector):
             return(True)
 
