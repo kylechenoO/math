@@ -2,7 +2,7 @@ from math import sqrt, acos, pi
 from decimal import Decimal, getcontext
 
 # 设置Decimal数值精度
-getcontext().prec = 15
+getcontext().prec = 30
 
 # 向量类
 class Vector(object):
@@ -14,6 +14,7 @@ class Vector(object):
                 raise ValueError
             self.coordinates = tuple([ Decimal(x) for x in coordinates ])
             self.dimension = len(coordinates)
+            self.range = 1e-10
 
         except ValueError:
             raise ValueError('The coordinates must be nonempty')
@@ -134,7 +135,7 @@ class Vector(object):
             i = 1
             while(i < self.dimension):
                 tmp = self.coordinates[i] / v.coordinates[i]
-                if result != tmp:
+                if abs(result - tmp) > self.range:
                     return(False)
                 i += 1
 
