@@ -13,7 +13,6 @@ class Line(object):
 
     # 构建函数, normal_vector =  Vector([a, b])为此Line的法向量
     def __init__(self, normal_vector=None, constant_term=None):
-
         # 获取Vector维度
         self.dimension = len(normal_vector)
 
@@ -46,7 +45,6 @@ class Line(object):
 
     # 设置basepoint(基点), 找坐标轴交点
     def set_basepoint(self):
-
         # round四舍五入精度配置读取
         num_decimal_places = self.num_decimal_places
 
@@ -144,7 +142,7 @@ class Line(object):
         return(Decimal(result))
 
     # 计算指定y值的x值
-    def get_y(self, y):
+    def get_x(self, y):
         # round四舍五入精度配置读取
         num_decimal_places = self.num_decimal_places
 
@@ -160,15 +158,24 @@ class Line(object):
 
     # 检查是否平行
     def is_parallel(self, line):
-        if (not self.is_equal(line)) and (self.normal_vector.is_parallel(line.normal_vector)):
+        if (not self == line) and (self.normal_vector.is_parallel(line.normal_vector)):
             return(True)
 
         else:
             return(False)
 
     # 检查是否相等
-    def is_equal(self, line):
+    def __eq__(self, line):
         # Get Vector v from line.basepoint - self.basepoint
+        if self.normal_vector.is_zero() and line.normal_vector.is_zero():
+            return(True)
+
+        elif self.is_zero(line.constant_term - self.constant_term):
+            return(True)
+
+        else:
+            return(False)
+
         v = line.basepoint - self.basepoint
         if (v.coordinates[0] == 0) and (v.coordinates[1] == 0):
             x = line.basepoint.coordinates[0] + Decimal('0')
@@ -193,7 +200,7 @@ class Line(object):
             return(False)
 
         # 判断是否相等
-        if self.is_equal(line):
+        if self == line:
             print('is equal')
             return(False)
 
@@ -246,7 +253,7 @@ if __name__ == '__main__':
     print(line1)
     print(line2)
     print(line1.is_parallel(line2))
-    print(line1.is_equal(line2))
+    print(line1 == line2)
     print(line1.intersection(line2))
     print('---------------------------------')
 
@@ -263,7 +270,7 @@ if __name__ == '__main__':
     print(line1)
     print(line2)
     print(line1.is_parallel(line2))
-    print(line1.is_equal(line2))
+    print(line1 == line2)
     print(line1.intersection(line2))
     print('---------------------------------')
 
@@ -280,5 +287,23 @@ if __name__ == '__main__':
     print(line1)
     print(line2)
     print(line1.is_parallel(line2))
-    print(line1.is_equal(line2))
+    print(line1 == line2)
     print(line1.intersection(line2))
+    print('---------------------------------')
+
+    A = 0
+    B = 0
+    k1 = 1.000000000001
+    C = 0
+    D = 0
+    k2 = 1.000000000002
+    v1 = Vector([A, B])
+    v2 = Vector([C, D])
+    line1 = Line(v1, k1)
+    line2 = Line(v2, k2)
+    print(line1)
+    print(line2)
+    print(line1.is_parallel(line2))
+    print(line1 == line2)
+    print(line1.intersection(line2))
+    print('---------------------------------')
