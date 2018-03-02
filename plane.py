@@ -79,6 +79,7 @@ class Plane(object):
             output = ''
             if coefficient < 0:
                 output += '-'
+
             if coefficient > 0 and not is_initial_term:
                 output += '+'
 

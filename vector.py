@@ -40,7 +40,7 @@ class Vector(object):
             raise ValueError('The value lenth must be the same')
 
         result = [ x + y for x, y in zip(self.coordinates, v.coordinates)]
-        return(result)
+        return(Vector(result))
 
     # 重载-
     def __sub__(self, v):

@@ -32,16 +32,46 @@ class LinearSystem(object):
             raise Exception(self.ALL_PLANES_MUST_BE_IN_SAME_DIM_MSG)
 
     # 交换等式
-    def swap_rows(self, row1, row2):
-        pass # add your code here
+    def swap_rows(self, index1, index2):
+        self.planes[index1], self.planes[index2] = self.planes[index2], self.planes[index1]
+        return(self.planes)
 
     # 系数乘法
-    def multiply_coefficient_and_row(self, coefficient, row):
-        pass # add your code here
+    def multiply_coefficient_and_row(self, coefficient, index, inplace = True):
+        if coefficient == 0:
+            return(False)
 
-    # 系数乘法后与等式相加
-    def add_multiple_times_row_to_row(self, coefficient, row_to_add, row_to_be_added_to):
-        pass # add your code here
+        if inplace :
+            # mul normal_vector
+            self.planes[index].normal_vector = self.planes[index].normal_vector * Decimal(coefficient)
+
+            # mul constant_term
+            self.planes[index].constant_term = self.planes[index].constant_term * Decimal(coefficient)
+
+            # flush coordinates
+            self.planes[index].coordinates = self.planes[index].normal_vector.coordinates
+            return(self.planes[index])
+
+        else:
+            normal_vector = self.planes[index].normal_vector * Decimal(coefficient)
+            constant_term = self.planes[index].constant_term * Decimal(coefficient)
+            return(Plane(normal_vector, constant_term))
+
+    # 系数乘法后与等式相加, 不修改原planes[index1]
+    # planes[index2] = planes[index1] * coefficient + planes[index2]
+    def add_multiple_times_row_to_row(self, coefficient, index1, index2):
+        # get mul index1
+        plane = self.multiply_coefficient_and_row(coefficient, index1, inplace = False)
+        if not plane:
+            return(self.planes[index2])
+
+        # add it to index2
+        self.planes[index2].normal_vector = self.planes[index2].normal_vector + plane.normal_vector
+        self.planes[index2].constant_term = self.planes[index2].constant_term + plane.constant_term
+
+        # flush coordinates
+        self.planes[index2].coordinates = self.planes[index2].normal_vector.coordinates
+        return(self.planes[index2])
 
     # 查找第一个非零的系数
     def indices_of_first_nonzero_terms_in_each_row(self):
@@ -93,21 +123,60 @@ class LinearSystem(object):
     def is_zero(self, value, eps=1e-10):
         return(abs(value) < eps)
 
-if __name__ == '__main__':
-    # main run part
-    p0 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
-    p1 = Plane(normal_vector=Vector(['0','1','0']), constant_term='2')
-    p2 = Plane(normal_vector=Vector(['1','1','-1']), constant_term='3')
-    p3 = Plane(normal_vector=Vector(['1','0','-2']), constant_term='2')
+# main run part
+p0 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
+p1 = Plane(normal_vector=Vector(['0','1','0']), constant_term='2')
+p2 = Plane(normal_vector=Vector(['1','1','-1']), constant_term='3')
+p3 = Plane(normal_vector=Vector(['1','0','-2']), constant_term='2')
 
-    s = LinearSystem([p0,p1,p2,p3])
-    print(s.indices_of_first_nonzero_terms_in_each_row())
-    print('{}, {}, {}, {}'.format(s[0],s[1],s[2],s[3]))
-    print(len(s))
-    print(s)
+s = LinearSystem([p0,p1,p2,p3])
+s.swap_rows(0,1)
+if not (s[0] == p1 and s[1] == p0 and s[2] == p2 and s[3] == p3):
+    print('test case 1 failed')
 
-    s[0] = p1
-    print(s)
+s.swap_rows(1,3)
+if not (s[0] == p1 and s[1] == p3 and s[2] == p2 and s[3] == p0):
+    print('test case 2 failed')
 
-    print(s.is_zero(Decimal('1e-9')))
-    print(s.is_zero(Decimal('1e-11')))
+s.swap_rows(3,1)
+if not (s[0] == p1 and s[1] == p0 and s[2] == p2 and s[3] == p3):
+    print('test case 3 failed')
+
+s.multiply_coefficient_and_row(1,0)
+if not (s[0] == p1 and s[1] == p0 and s[2] == p2 and s[3] == p3):
+    print('test case 4 failed')
+
+s.multiply_coefficient_and_row(-1,2)
+if not (s[0] == p1 and
+        s[1] == p0 and
+        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
+        s[3] == p3):
+    print('test case 5 failed')
+
+s.multiply_coefficient_and_row(10,1)
+if not (s[0] == p1 and
+        s[1] == Plane(normal_vector=Vector(['10','10','10']), constant_term='10') and
+        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
+        s[3] == p3):
+    print('test case 6 failed')
+
+s.add_multiple_times_row_to_row(0,0,1)
+if not (s[0] == p1 and
+        s[1] == Plane(normal_vector=Vector(['10','10','10']), constant_term='10') and
+        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
+        s[3] == p3):
+    print('test case 7 failed')
+
+s.add_multiple_times_row_to_row(1,0,1)
+if not (s[0] == p1 and
+        s[1] == Plane(normal_vector=Vector(['10','11','10']), constant_term='12') and
+        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
+        s[3] == p3):
+    print('test case 8 failed')
+
+s.add_multiple_times_row_to_row(-1,1,0)
+if not (s[0] == Plane(normal_vector=Vector(['-10','-10','-10']), constant_term='-10') and
+        s[1] == Plane(normal_vector=Vector(['10','11','10']), constant_term='12') and
+        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
+        s[3] == p3):
+    print('test case 9 failed')
