@@ -28,6 +28,9 @@ class LinearSystem(object):
             # 维度赋值
             self.dimension = d
 
+            # round精度设置
+            self.num_decimal_places = 3
+
         except AssertionError:
             raise Exception(self.ALL_PLANES_MUST_BE_IN_SAME_DIM_MSG)
 
@@ -123,7 +126,7 @@ class LinearSystem(object):
     def is_zero(self, value, eps=1e-10):
         return(abs(value) < eps)
 
-    # 在planes里面查找是否某个系数有值, 有值则交换到此行, 如若无值, 返回False
+    # Trangle在planes里面查找第v个系数的有效值(不等于0), 有值则交换到此行, 并返回True, 如若无值, 返回False
     def trans_row(self, p, v):
         for x in range(p + 1, len(self)):
             if not self.is_zero(self[x].normal_vector.coordinates[v]):
@@ -132,7 +135,7 @@ class LinearSystem(object):
 
         return(False)
 
-    # 清楚某行以下的等式中的v系数
+    # Trangle清除p行以下的plane中的第v个系数
     def clear(self, p, v):
         for x in range(p + 1, len(self)):
             base = - self[x].normal_vector.coordinates[v] / self[p].normal_vector.coordinates[v]
@@ -140,7 +143,7 @@ class LinearSystem(object):
 
         return(True)
 
-    # 计算三角形
+    # Trangle function
     def compute_triangular_form(self):
         # 拷贝, 以防修改外部变量
         system = deepcopy(self)
@@ -161,41 +164,99 @@ class LinearSystem(object):
             v += 1
         return(system)
 
+    # RREF使self[p].normal_vector.coordinates[v]为1
+    def equal_one(self, p, v):
+        base = Decimal('1') / self[p].normal_vector.coordinates[v]
+        self.multiply_coefficient_and_row(base, p)
+        return(True)
+
+    # RREF向上消除self[p].normal_vector.coodinates[v]
+    def clear_above(self, p, v):
+        x = p - 1
+        while x >= 0:
+            base = - self[x].normal_vector.coordinates[v]
+            self.add_multiple_times_row_to_row(base, p, x)
+            x -= 1
+
+        return(True)
+
+    # RREF function
+    def compute_rref(self):
+        tf = self.compute_triangular_form()
+        indices_list = tf.indices_of_first_nonzero_terms_in_each_row()
+        p = len(tf) - 1
+        while p >= 0:
+            v = indices_list[p]
+            if indices_list[p] < 0:
+                p -= 1
+                continue
+
+            tf.equal_one(p, v)
+            tf.clear_above(p, v)
+            p -= 1
+        return(tf)
+
+    # RREF无解异常抛出
+    def raise_nosolution(self):
+        for plane in self.planes:
+            try:
+                plane.first_nonzero_index()
+
+            except Exception as e:
+                if (str(e) == 'No nonzero elements found'):
+                    constant_term = plane.constant_term
+                    if not plane.is_zero(constant_term):
+                        raise Exception(self.NO_SOLUTIONS_MSG)
+
+    # RREF无数解异常抛出(解的个数与维度比较, 如果有唯一解, 则解的个数与维度应该相等)
+    def raise_infsolution(self):
+        indicies_list = self.indices_of_first_nonzero_terms_in_each_row()
+        vcount = sum([ 1 if index >= 0 else 0 for index in indicies_list ])
+        dimension = self.dimension
+        if vcount < dimension:
+            raise Exception(self.INF_SOLUTIONS_MSG)
+
+    # 高斯消元求解调度函数
+    def do_gaussion(self):
+        rref = self.compute_rref()
+        rref.raise_nosolution()
+        rref.raise_infsolution()
+        dimension = rref.dimension
+        result = [ round(rref.planes[i].constant_term, self.num_decimal_places) for i in range(dimension) ]
+        return(Vector(result))
+
+    # 高斯消元求解入口函数
+    def compute_solution(self):
+        try:
+            return self.do_gaussion()
+
+        except Exception as e:
+            if (str(e) == self.NO_SOLUTIONS_MSG) or \
+                    (str(e) == self.INF_SOLUTIONS_MSG):
+                return(str(e))
+
+            else:
+                raise e
+
+
 # main run part
-p1 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
-p2 = Plane(normal_vector=Vector(['0','1','1']), constant_term='2')
-s = LinearSystem([p1,p2])
-t = s.compute_triangular_form()
-if not (t[0] == p1 and
-        t[1] == p2):
-    print('test case 1 failed')
+p1 = Plane(normal_vector = Vector([5.862, 1.178, -10.366]), constant_term = -8.15)
+p2 = Plane(normal_vector = Vector([-2.931, -0.589, 5.183]), constant_term = -4.075)
+s = LinearSystem([p1, p2])
+t = s.compute_solution()
+print(t)
 
-p1 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
-p2 = Plane(normal_vector=Vector(['1','1','1']), constant_term='2')
-s = LinearSystem([p1,p2])
-t = s.compute_triangular_form()
-if not (t[0] == p1 and
-        t[1] == Plane(constant_term='1')):
-    print('test case 2 failed')
+p1 = Plane(normal_vector = Vector([8.631, 5.112, -1.816]), constant_term = -5.113)
+p2 = Plane(normal_vector = Vector([4.315, 11.132, -5.27]), constant_term = -6.775)
+p3 = Plane(normal_vector = Vector([-2.158, 3.01, -1.727]), constant_term = -0.831)
+s = LinearSystem([p1, p2, p3])
+t = s.compute_solution()
+print(t)
 
-p1 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
-p2 = Plane(normal_vector=Vector(['0','1','0']), constant_term='2')
-p3 = Plane(normal_vector=Vector(['1','1','-1']), constant_term='3')
-p4 = Plane(normal_vector=Vector(['1','0','-2']), constant_term='2')
-s = LinearSystem([p1,p2,p3,p4])
-t = s.compute_triangular_form()
-if not (t[0] == p1 and
-        t[1] == p2 and
-        t[2] == Plane(normal_vector=Vector(['0','0','-2']), constant_term='2') and
-        t[3] == Plane()):
-    print('test case 3 failed')
-
-p1 = Plane(normal_vector=Vector(['0','1','1']), constant_term='1')
-p2 = Plane(normal_vector=Vector(['1','-1','1']), constant_term='2')
-p3 = Plane(normal_vector=Vector(['1','2','-5']), constant_term='3')
-s = LinearSystem([p1,p2,p3])
-t = s.compute_triangular_form()
-if not (t[0] == Plane(normal_vector=Vector(['1','-1','1']), constant_term='2') and
-        t[1] == Plane(normal_vector=Vector(['0','1','1']), constant_term='1') and
-        t[2] == Plane(normal_vector=Vector(['0','0','-9']), constant_term='-2')):
-    print('test case 4 failed')
+p1 = Plane(normal_vector = Vector([5.262, 2.739, -9.878]), constant_term = -3.441)
+p2 = Plane(normal_vector = Vector([5.111, 6.358, 7.638]), constant_term = -2.152)
+p3 = Plane(normal_vector = Vector([2.016, -9.924, -1.367]), constant_term = -9.278)
+p4 = Plane(normal_vector = Vector([2.167, -13.543, -18.883]), constant_term = -10.567)
+s = LinearSystem([p1, p2, p3, p4])
+t = s.compute_solution()
+print(t)
