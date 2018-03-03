@@ -7,28 +7,29 @@ getcontext().prec = 30
 # Plane类
 class Plane(object):
 
-    # error msg
-    NORMAL_VECTOR_TYPE_ERROR_MSG = 'Normal Vector must be object of Vector'
-    NO_NONZERO_ELTS_FOUND_MSG = 'No nonzero elements found'
-
     # 初始化函数, normval_vector为此平面的法向量
     def __init__(self, normal_vector=None, constant_term=None):
+        # error msg
+        self.NORMAL_VECTOR_TYPE_ERROR_MSG = 'Normal Vector must be object of Vector'
+        self.NO_NONZERO_ELTS_FOUND_MSG = 'No nonzero elements found'
+
         # 获取Vector维度
-        self.dimension = len(normal_vector)
+        # self.dimension = len(normal_vector)
+        self.dimension = 3
 
         # 检查normal_vector类型
         type_normal_vector = type(normal_vector)
-        if not (type_normal_vector is Vector):
-            raise Exception(NORMAL_VECTOR_TYPE_ERROR_MSG)
+        if (not (type_normal_vector is Vector)) and (not (normal_vector == None)):
+            raise Exception(self.NORMAL_VECTOR_TYPE_ERROR_MSG)
 
         # 如果Vector.coordinates为空
-        if not normal_vector.coordinates:
+        if not normal_vector:
             all_zeros = ['0'] * self.dimension
             normal_vector = Vector(all_zeros)
     
         # Plan法向量赋值
         self.normal_vector = normal_vector
-        self.coordinates = self.normal_vector.coordinates
+        # self.coordinates = self.normal_vector.coordinates
 
         # k值检查
         if not constant_term:
@@ -49,7 +50,7 @@ class Plane(object):
         num_decimal_places = self.num_decimal_places
 
         try:
-            n = self.coordinates
+            n = self.normal_vector.coordinates
             k = self.constant_term
             basepoint_coords = ['0'] * self.dimension
             initial_index = self.first_nonzero_index()
@@ -59,7 +60,7 @@ class Plane(object):
             self.basepoint = Vector(basepoint_coords)
 
         except Exception as e:
-            if str(e) == NO_NONZERO_ELTS_FOUND_MSG:
+            if str(e) == self.NO_NONZERO_ELTS_FOUND_MSG:
                 self.basepoint = None
 
             else:
@@ -92,7 +93,7 @@ class Plane(object):
             return(output)
 
         # 格式化输出字符串
-        n = self.coordinates
+        n = self.normal_vector.coordinates
         try:
             initial_index = self.first_nonzero_index()
             terms = [ write_coefficient(n[i], is_initial_term=( i==initial_index )) + 'x_{}'.format(i+1)
@@ -100,7 +101,7 @@ class Plane(object):
             output = ' '.join(terms)
 
         except Exception as e:
-            if str(e) == NO_NONZERO_ELTS_FOUND_MSG:
+            if str(e) == self.NO_NONZERO_ELTS_FOUND_MSG:
                 output = '0'
 
             else:
@@ -116,11 +117,11 @@ class Plane(object):
 
     # 查找第一个不为零的index
     def first_nonzero_index(self):
-        for k, item in enumerate(self.coordinates):
+        for k, item in enumerate(self.normal_vector.coordinates):
             if not self.is_zero(item):
                 return(k)
 
-        raise Exception(NO_NONZERO_ELTS_FOUND_MSG)
+        raise Exception(self.NO_NONZERO_ELTS_FOUND_MSG)
 
     # 判断是否为零
     def is_zero(self, value, eps = 1e-10):
@@ -138,14 +139,14 @@ class Plane(object):
     def __eq__(self, plane):
         # Check zero Vector
         if self.normal_vector.is_zero():
-            if plane.normal_vector.is_zero():
-                return(True)
-
-            else:
+            if not plane.normal_vector.is_zero():
                 return(False)
 
-        elif self.is_zero(plane.constant_term - self.constant_term):
-            return(True)
+            else:
+                return(self.is_zero(plane.constant_term - self.constant_term))
+
+        elif plane.normal_vector.is_zero():
+            return(False)
 
         # Get Vector v from plane.basepoint - self.basepoint
         v = plane.basepoint - self.basepoint

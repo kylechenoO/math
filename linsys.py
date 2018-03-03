@@ -8,14 +8,14 @@ getcontext().prec = 30
 
 # LinearSystem类
 class LinearSystem(object):
-
-    # error msg
-    ALL_PLANES_MUST_BE_IN_SAME_DIM_MSG = 'All planes in the system should live in the same dimension'
-    NO_SOLUTIONS_MSG = 'No solutions'
-    INF_SOLUTIONS_MSG = 'Infinitely many solutions'
-
     # 初始化函数
     def __init__(self, planes):
+        # error msg
+        self.ALL_PLANES_MUST_BE_IN_SAME_DIM_MSG = 'All planes in the system should live in the same dimension'
+        self.NO_SOLUTIONS_MSG = 'No solutions'
+        self.INF_SOLUTIONS_MSG = 'Infinitely many solutions'
+        self.NO_NONZERO_ELTS_FOUND_MSG = 'No nonzero elements found'
+
         try:
             # 判断是否在同一维度进行计算
             d = planes[0].dimension
@@ -48,8 +48,8 @@ class LinearSystem(object):
             # mul constant_term
             self.planes[index].constant_term = self.planes[index].constant_term * Decimal(coefficient)
 
-            # flush coordinates
-            self.planes[index].coordinates = self.planes[index].normal_vector.coordinates
+            # update basepoint
+            self.planes[index].set_basepoint()
             return(self.planes[index])
 
         else:
@@ -69,8 +69,8 @@ class LinearSystem(object):
         self.planes[index2].normal_vector = self.planes[index2].normal_vector + plane.normal_vector
         self.planes[index2].constant_term = self.planes[index2].constant_term + plane.constant_term
 
-        # flush coordinates
-        self.planes[index2].coordinates = self.planes[index2].normal_vector.coordinates
+        # update basepoint
+        self.planes[index2].set_basepoint()
         return(self.planes[index2])
 
     # 查找第一个非零的系数
@@ -87,7 +87,7 @@ class LinearSystem(object):
                 indices[i] = p.first_nonzero_index()
 
             except Exception as e:
-                if str(e) == Plane.NO_NONZERO_ELTS_FOUND_MSG:
+                if str(e) == self.NO_NONZERO_ELTS_FOUND_MSG:
                     continue
 
                 else:
@@ -123,60 +123,79 @@ class LinearSystem(object):
     def is_zero(self, value, eps=1e-10):
         return(abs(value) < eps)
 
-# main run part
-p0 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
-p1 = Plane(normal_vector=Vector(['0','1','0']), constant_term='2')
-p2 = Plane(normal_vector=Vector(['1','1','-1']), constant_term='3')
-p3 = Plane(normal_vector=Vector(['1','0','-2']), constant_term='2')
+    # 在planes里面查找是否某个系数有值, 有值则交换到此行, 如若无值, 返回False
+    def trans_row(self, p, v):
+        for x in range(p + 1, len(self)):
+            if not self.is_zero(self[x].normal_vector.coordinates[v]):
+                self.swap_rows(p, x)
+                return(True)
 
-s = LinearSystem([p0,p1,p2,p3])
-s.swap_rows(0,1)
-if not (s[0] == p1 and s[1] == p0 and s[2] == p2 and s[3] == p3):
+        return(False)
+
+    # 清楚某行以下的等式中的v系数
+    def clear(self, p, v):
+        for x in range(p + 1, len(self)):
+            base = - self[x].normal_vector.coordinates[v] / self[p].normal_vector.coordinates[v]
+            self.add_multiple_times_row_to_row(base, p, x)
+
+        return(True)
+
+    # 计算三角形
+    def compute_triangular_form(self):
+        # 拷贝, 以防修改外部变量
+        system = deepcopy(self)
+
+        # p为plane, v为系数(vector中的一个值)
+        p = 0
+        v = 0
+        for p in range(len(system)):
+            while v < system.dimension:
+                if system.is_zero(system[p].normal_vector.coordinates[v]):
+                    if not system.trans_row(p, v):
+                        v += 1
+                        continue
+
+                system.clear(p, v)
+                p += 1
+                break
+            v += 1
+        return(system)
+
+# main run part
+p1 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
+p2 = Plane(normal_vector=Vector(['0','1','1']), constant_term='2')
+s = LinearSystem([p1,p2])
+t = s.compute_triangular_form()
+if not (t[0] == p1 and
+        t[1] == p2):
     print('test case 1 failed')
 
-s.swap_rows(1,3)
-if not (s[0] == p1 and s[1] == p3 and s[2] == p2 and s[3] == p0):
+p1 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
+p2 = Plane(normal_vector=Vector(['1','1','1']), constant_term='2')
+s = LinearSystem([p1,p2])
+t = s.compute_triangular_form()
+if not (t[0] == p1 and
+        t[1] == Plane(constant_term='1')):
     print('test case 2 failed')
 
-s.swap_rows(3,1)
-if not (s[0] == p1 and s[1] == p0 and s[2] == p2 and s[3] == p3):
+p1 = Plane(normal_vector=Vector(['1','1','1']), constant_term='1')
+p2 = Plane(normal_vector=Vector(['0','1','0']), constant_term='2')
+p3 = Plane(normal_vector=Vector(['1','1','-1']), constant_term='3')
+p4 = Plane(normal_vector=Vector(['1','0','-2']), constant_term='2')
+s = LinearSystem([p1,p2,p3,p4])
+t = s.compute_triangular_form()
+if not (t[0] == p1 and
+        t[1] == p2 and
+        t[2] == Plane(normal_vector=Vector(['0','0','-2']), constant_term='2') and
+        t[3] == Plane()):
     print('test case 3 failed')
 
-s.multiply_coefficient_and_row(1,0)
-if not (s[0] == p1 and s[1] == p0 and s[2] == p2 and s[3] == p3):
+p1 = Plane(normal_vector=Vector(['0','1','1']), constant_term='1')
+p2 = Plane(normal_vector=Vector(['1','-1','1']), constant_term='2')
+p3 = Plane(normal_vector=Vector(['1','2','-5']), constant_term='3')
+s = LinearSystem([p1,p2,p3])
+t = s.compute_triangular_form()
+if not (t[0] == Plane(normal_vector=Vector(['1','-1','1']), constant_term='2') and
+        t[1] == Plane(normal_vector=Vector(['0','1','1']), constant_term='1') and
+        t[2] == Plane(normal_vector=Vector(['0','0','-9']), constant_term='-2')):
     print('test case 4 failed')
-
-s.multiply_coefficient_and_row(-1,2)
-if not (s[0] == p1 and
-        s[1] == p0 and
-        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
-        s[3] == p3):
-    print('test case 5 failed')
-
-s.multiply_coefficient_and_row(10,1)
-if not (s[0] == p1 and
-        s[1] == Plane(normal_vector=Vector(['10','10','10']), constant_term='10') and
-        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
-        s[3] == p3):
-    print('test case 6 failed')
-
-s.add_multiple_times_row_to_row(0,0,1)
-if not (s[0] == p1 and
-        s[1] == Plane(normal_vector=Vector(['10','10','10']), constant_term='10') and
-        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
-        s[3] == p3):
-    print('test case 7 failed')
-
-s.add_multiple_times_row_to_row(1,0,1)
-if not (s[0] == p1 and
-        s[1] == Plane(normal_vector=Vector(['10','11','10']), constant_term='12') and
-        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
-        s[3] == p3):
-    print('test case 8 failed')
-
-s.add_multiple_times_row_to_row(-1,1,0)
-if not (s[0] == Plane(normal_vector=Vector(['-10','-10','-10']), constant_term='-10') and
-        s[1] == Plane(normal_vector=Vector(['10','11','10']), constant_term='12') and
-        s[2] == Plane(normal_vector=Vector(['-1','-1','1']), constant_term='-3') and
-        s[3] == p3):
-    print('test case 9 failed')
